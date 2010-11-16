@@ -261,11 +261,11 @@ module ActiveRecord
           if commands.length >= MAX_BOXCAR_SIZE or (previous_command and (command.verb != previous_command.verb))
             send_commands(commands)
             
-            commands = []
-            previous_command = nil
+            commands = [command] # Otherwise command will be lost at all (every 200th command (MAX_BOXCAR_SIZE = 200))
+            previous_command = command
           else
             commands << command
-	        previous_command = command
+            previous_command = command
           end
         end
 
