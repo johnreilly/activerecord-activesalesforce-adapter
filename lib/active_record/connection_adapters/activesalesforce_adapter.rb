@@ -718,7 +718,7 @@ module ActiveRecord
                 # Automatically create a least a stub for the referenced entity
                 debug("   Creating ActiveRecord stub for the referenced entity '#{reference_to}'")
                 
-                referenced_klass = klass.class_eval("Salesforce::#{reference_to} = Class.new(ActiveRecord::Base)")
+                referenced_klass = klass.class_eval("#{(self.config[:namespace].to_s + "::") if self.config[:namespace]}Salesforce::#{reference_to} = Class.new(ActiveRecord::Base)")
                 referenced_klass.instance_variable_set("@asf_connection", klass.connection)
 
                 # Automatically inherit the connection from the referencee
@@ -755,7 +755,7 @@ module ActiveRecord
         debug("Found matching class '#{entity_klass}' for entity '#{entity_name}'") if entity_klass
         
         # Constantize entities under the Salesforce namespace.
-        entity_klass = ("Salesforce::" + entity_name).constantize unless entity_klass
+        entity_klass = ("#{(self.config[:namespace].to_s + "::") if self.config[:namespace]}Salesforce::" + entity_name).constantize unless entity_klass
         
         entity_klass
       end
