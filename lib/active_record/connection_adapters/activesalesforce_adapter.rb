@@ -791,8 +791,16 @@ module ActiveRecord
         
         # See if a table name to AR class mapping was registered
         klass = @class_to_entity_map[table_name.upcase]
+        # And look in custom fields too
+        klass = @class_to_entity_map["#{table_name}__c".upcase] unless klass
         
         entity_name = klass ? raw_table_name : table_name.camelize
+
+        # Adds ability to use custom fields from SF that have an underline between name, like "Aria Plan"
+        if raw_table_name.slice(-3, 3) == '__c'
+          entity_name = raw_table_name.gsub(/__c$/, '').split("_").map(&:capitalize).join('_') << "__c"
+        end 
+        
         entity_def = get_entity_def(entity_name)
         
         [table_name, entity_def.columns, entity_def]
