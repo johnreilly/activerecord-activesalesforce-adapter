@@ -261,11 +261,11 @@ module ActiveRecord
           if commands.length >= MAX_BOXCAR_SIZE or (previous_command and (command.verb != previous_command.verb))
             send_commands(commands)
             
-            commands = []
-            previous_command = nil
+            commands = [command] # Otherwise command will be lost at all (every 200th command (MAX_BOXCAR_SIZE = 200))
+            previous_command = command
           else
             commands << command
-	        previous_command = command
+            previous_command = command
           end
         end
 
@@ -718,7 +718,7 @@ module ActiveRecord
                 # Automatically create a least a stub for the referenced entity
                 debug("   Creating ActiveRecord stub for the referenced entity '#{reference_to}'")
                 
-                referenced_klass = klass.class_eval("Salesforce::#{reference_to} = Class.new(ActiveRecord::Base)")
+                referenced_klass = klass.class_eval("#{(self.config[:namespace].to_s + "::") if self.config[:namespace]}Salesforce::#{reference_to} = Class.new(ActiveRecord::Base)")
                 referenced_klass.instance_variable_set("@asf_connection", klass.connection)
 
                 # Automatically inherit the connection from the referencee
@@ -755,7 +755,7 @@ module ActiveRecord
         debug("Found matching class '#{entity_klass}' for entity '#{entity_name}'") if entity_klass
         
         # Constantize entities under the Salesforce namespace.
-        entity_klass = ("Salesforce::" + entity_name).constantize unless entity_klass
+        entity_klass = ("#{(self.config[:namespace].to_s + "::") if self.config[:namespace]}Salesforce::" + entity_name).constantize unless entity_klass
         
         entity_klass
       end
@@ -791,8 +791,16 @@ module ActiveRecord
         
         # See if a table name to AR class mapping was registered
         klass = @class_to_entity_map[table_name.upcase]
+        # And look in custom fields too
+        klass = @class_to_entity_map["#{table_name}__c".upcase] unless klass
         
         entity_name = klass ? raw_table_name : table_name.camelize
+
+        # Adds ability to use custom fields from SF that have an underline between name, like "Aria Plan"
+        if raw_table_name.slice(-3, 3) == '__c'
+          entity_name = raw_table_name.gsub(/__c$/, '').split("_").map(&:capitalize).join('_') << "__c"
+        end 
+        
         entity_def = get_entity_def(entity_name)
         
         [table_name, entity_def.columns, entity_def]
